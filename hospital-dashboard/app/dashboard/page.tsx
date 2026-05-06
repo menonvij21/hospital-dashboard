@@ -22,14 +22,14 @@ const container = {
     opacity: 1,
     transition: { staggerChildren: 0.05 }
   }
-}
+} as const
 
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { 
     opacity: 1, 
     y: 0,
-    transition: { type: 'spring', stiffness: 100 }
+    transition: { type: 'spring' as const, stiffness: 100 }
   }
 }
 
