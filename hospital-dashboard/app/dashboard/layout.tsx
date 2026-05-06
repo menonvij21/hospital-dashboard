@@ -5,57 +5,51 @@ import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Calendar, Users,
-  Phone, Bell, Settings, Activity,
-  Stethoscope, LogOut, Search,
-  ChevronLeft, TrendingUp, Zap
+  Phone, ChevronLeft, ChevronRight,
+  Bell, Activity, Stethoscope,
+  LogOut, Moon, Sun, Search
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 
 const menuItems = [
   {
-    title: 'OVERVIEW',
+    title: 'MAIN',
     items: [
       {
-        name: 'Dashboard',
+        name: 'Overview',
         href: '/dashboard',
         icon: LayoutDashboard,
-        badge: null,
-        color: 'text-blue-400'
+        badge: null
       },
       {
         name: 'Analytics',
-        href: '/dashboard/analytics',
-        icon: TrendingUp,
-        badge: 'New',
-        color: 'text-purple-400'
+        href: '/dashboard',
+        icon: Activity,
+        badge: 'Live'
       },
     ]
   },
   {
-    title: 'PATIENT MANAGEMENT',
+    title: 'MANAGEMENT',
     items: [
       {
         name: 'Appointments',
         href: '/dashboard/appointments',
         icon: Calendar,
-        badge: null,
-        color: 'text-green-400'
+        badge: null
       },
       {
         name: 'Patients',
         href: '/dashboard/patients',
         icon: Users,
-        badge: null,
-        color: 'text-orange-400'
+        badge: null
       },
       {
         name: 'Call Logs',
         href: '/dashboard/calls',
         icon: Phone,
-        badge: 'Live',
-        color: 'text-pink-400'
+        badge: null
       },
     ]
   },
@@ -67,120 +61,63 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [currentTime, setCurrentTime] = useState('')
+  const [currentDate, setCurrentDate] = useState('')
   const pathname = usePathname()
 
   useEffect(() => {
     setMounted(true)
-    const updateTime = () => {
-      setCurrentTime(
-        new Date().toLocaleTimeString('en-AE', {
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Asia/Dubai'
-        })
-      )
-    }
-    updateTime()
-    const timer = setInterval(updateTime, 1000)
-    return () => clearInterval(timer)
+    setCurrentDate(
+      new Date().toLocaleDateString('en-AE', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'Asia/Dubai'
+      })
+    )
   }, [])
 
-  if (!mounted) return null
-
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 
-      via-blue-50/30 to-purple-50/20 overflow-hidden">
+    <div className={`flex h-screen overflow-hidden
+      ${darkMode ? 'dark bg-gray-950' : 'bg-gray-50'}`}>
 
-      {/* Premium Sidebar */}
+      {/* Sidebar */}
       <motion.aside
-        animate={{ width: collapsed ? 80 : 280 }}
-        className="relative bg-white border-r border-gray-100
-          shadow-xl flex flex-col z-20 flex-shrink-0"
+        animate={{ width: collapsed ? 80 : 260 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="relative flex flex-col h-full
+          bg-gradient-to-b from-[#0f172a] to-[#1e293b]
+          border-r border-white/5 shadow-2xl z-20 flex-shrink-0"
       >
-        {/* Gradient Top Bar */}
-        <div className="h-1 bg-gradient-to-r from-blue-500 
-          via-purple-500 to-pink-500" />
-
         {/* Logo */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <motion.div
-              whileHover={{ rotate: 360 }}
-              transition={{ duration: 0.5 }}
-              className="w-11 h-11 rounded-2xl bg-gradient-to-br
-                from-blue-600 via-blue-500 to-purple-600
-                flex items-center justify-center flex-shrink-0
-                shadow-lg shadow-blue-500/50"
-            >
-              <Stethoscope className="w-6 h-6 text-white" />
-            </motion.div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                >
-                  <p className="font-bold text-gray-900 text-base">
-                    Universal Hospital
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Admin Dashboard
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        <div className="flex items-center gap-3 px-5 py-6
+          border-b border-white/10">
+          <div className="w-10 h-10 rounded-2xl
+            bg-gradient-to-br from-blue-500 to-blue-700
+            flex items-center justify-center flex-shrink-0
+            shadow-lg shadow-blue-500/30">
+            <Stethoscope className="w-5 h-5 text-white" />
           </div>
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <p className="text-white font-bold text-sm leading-tight">
+                  Universal Hospital
+                </p>
+                <p className="text-blue-400 text-xs">Abu Dhabi, UAE</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Quick Stats Card */}
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mx-4 my-4"
-            >
-              <div className="bg-gradient-to-br from-blue-500 
-                to-purple-600 rounded-2xl p-4 text-white
-                shadow-lg shadow-blue-500/30">
-                <div className="flex items-center gap-2 mb-3">
-                  <Activity className="w-4 h-4" />
-                  <p className="text-xs font-semibold uppercase
-                    tracking-wider">
-                    System Status
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs opacity-90">
-                      AI Agent
-                    </span>
-                    <Badge className="bg-green-400/20 text-green-200
-                      hover:bg-green-400/30 text-xs">
-                      Active
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs opacity-90">
-                      Database
-                    </span>
-                    <Badge className="bg-green-400/20 text-green-200
-                      hover:bg-green-400/30 text-xs">
-                      Connected
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-2 overflow-y-auto space-y-8">
+        <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
           {menuItems.map((section) => (
             <div key={section.title}>
               <AnimatePresence>
@@ -189,8 +126,8 @@ export default function DashboardLayout({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="text-[10px] font-bold text-gray-400
-                      uppercase tracking-widest px-3 mb-3"
+                    className="text-[10px] font-bold text-slate-500
+                      uppercase tracking-widest px-3 mb-2"
                   >
                     {section.title}
                   </motion.p>
@@ -202,18 +139,17 @@ export default function DashboardLayout({
                   return (
                     <Link key={item.name} href={item.href}>
                       <motion.div
-                        whileHover={{ x: 3 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ x: 4 }}
+                        whileTap={{ scale: 0.97 }}
                         className={`relative flex items-center gap-3
-                          px-3 py-3 rounded-xl cursor-pointer
-                          transition-all duration-200 group
+                          px-3 py-2.5 rounded-xl cursor-pointer
+                          transition-all duration-200
                           ${isActive
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-                            : 'text-gray-600 hover:bg-gray-50'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                            : 'text-slate-400 hover:text-white hover:bg-white/10'
                           }`}
                       >
-                        <item.icon className={`w-5 h-5 flex-shrink-0
-                          ${isActive ? 'text-white' : item.color}`} />
+                        <item.icon className="w-5 h-5 flex-shrink-0" />
                         <AnimatePresence>
                           {!collapsed && (
                             <motion.div
@@ -223,19 +159,15 @@ export default function DashboardLayout({
                               className="flex items-center
                                 justify-between flex-1 min-w-0"
                             >
-                              <span className="text-sm font-medium
-                                truncate">
+                              <span className="text-sm font-medium truncate">
                                 {item.name}
                               </span>
                               {item.badge && (
-                                <Badge className={`text-[10px] px-2
-                                  py-0.5
-                                  ${isActive
-                                    ? 'bg-white/20 text-white hover:bg-white/30'
-                                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                  }`}>
+                                <span className="text-[10px] px-1.5
+                                  py-0.5 rounded-full bg-blue-400/20
+                                  text-blue-300 font-medium">
                                   {item.badge}
-                                </Badge>
+                                </span>
                               )}
                             </motion.div>
                           )}
@@ -249,18 +181,14 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        {/* User Profile */}
-        <div className="p-4 border-t border-gray-100">
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className={`flex items-center gap-3 p-3 rounded-xl
-              bg-gray-50 hover:bg-gray-100 cursor-pointer
-              transition ${collapsed ? 'justify-center' : ''}`}
-          >
-            <Avatar className="w-10 h-10 flex-shrink-0
-              ring-2 ring-blue-500/30">
-              <AvatarFallback className="bg-gradient-to-br
-                from-blue-500 to-purple-600 text-white
+        {/* Bottom User */}
+        <div className="p-3 border-t border-white/10">
+          <div className={`flex items-center gap-3 p-2 rounded-xl
+            hover:bg-white/10 cursor-pointer transition
+            ${collapsed ? 'justify-center' : ''}`}>
+            <Avatar className="w-9 h-9 flex-shrink-0
+              ring-2 ring-blue-500/50">
+              <AvatarFallback className="bg-blue-600 text-white
                 text-sm font-bold">
                 A
               </AvatarFallback>
@@ -273,11 +201,10 @@ export default function DashboardLayout({
                   exit={{ opacity: 0 }}
                   className="flex-1 min-w-0"
                 >
-                  <p className="text-sm font-semibold text-gray-900
-                    truncate">
-                    Admin User
+                  <p className="text-white text-sm font-medium truncate">
+                    Admin
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-slate-400 text-xs truncate">
                     Super Admin
                   </p>
                 </motion.div>
@@ -290,109 +217,96 @@ export default function DashboardLayout({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <Settings className="w-4 h-4 text-gray-400
-                    hover:text-gray-600 transition" />
+                  <LogOut className="w-4 h-4 text-slate-400
+                    hover:text-white transition" />
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         </div>
 
         {/* Collapse Button */}
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+        <button
           onClick={() => setCollapsed(!collapsed)}
           className="absolute -right-3 top-8 w-6 h-6
-            bg-white rounded-full flex items-center
-            justify-center shadow-lg border border-gray-200
-            hover:border-blue-300 transition z-30"
+            bg-blue-600 rounded-full flex items-center
+            justify-center shadow-lg border-2 border-[#0f172a]
+            hover:bg-blue-500 transition z-30"
         >
-          <motion.div
-            animate={{ rotate: collapsed ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ChevronLeft className="w-3 h-3 text-gray-600" />
-          </motion.div>
-        </motion.button>
+          {collapsed
+            ? <ChevronRight className="w-3 h-3 text-white" />
+            : <ChevronLeft className="w-3 h-3 text-white" />
+          }
+        </button>
       </motion.aside>
 
-      {/* Main Content */}
+      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        {/* Premium Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-xl
-          border-b border-gray-100 flex items-center
-          justify-between px-6 flex-shrink-0 shadow-sm">
+        {/* Topbar */}
+        <header className="h-16 bg-white border-b border-gray-200
+          flex items-center justify-between px-6
+          flex-shrink-0 shadow-sm">
 
           {/* Search */}
-          <div className="relative w-96">
+          <div className="relative w-80">
             <Search className="w-4 h-4 text-gray-400
               absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
-              placeholder="Search anything..."
+              placeholder="Search patients, doctors..."
               className="pl-10 bg-gray-50 border-gray-200
-                focus:bg-white rounded-xl text-sm h-10
-                focus:ring-2 focus:ring-blue-500/20
-                focus:border-blue-300"
+                focus:bg-white rounded-xl text-sm h-9"
             />
           </div>
 
           {/* Right Side */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
 
-            {/* Time */}
-            <div className="hidden md:flex items-center gap-2
-              bg-gray-50 rounded-xl px-4 py-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full
-                animate-pulse" />
-              <span className="text-sm font-medium text-gray-600">
-                {currentTime}
-              </span>
-            </div>
+            {/* Dark Mode */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="w-9 h-9 rounded-xl bg-gray-100
+                flex items-center justify-center
+                hover:bg-gray-200 transition"
+            >
+              {darkMode
+                ? <Sun className="w-4 h-4 text-gray-600" />
+                : <Moon className="w-4 h-4 text-gray-600" />
+              }
+            </button>
 
             {/* Notifications */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative w-10 h-10 rounded-xl
-                bg-gray-50 flex items-center justify-center
-                hover:bg-gray-100 transition"
-            >
-              <Bell className="w-5 h-5 text-gray-600" />
+            <button className="relative w-9 h-9 rounded-xl
+              bg-gray-100 flex items-center justify-center
+              hover:bg-gray-200 transition">
+              <Bell className="w-4 h-4 text-gray-600" />
               <span className="absolute top-1.5 right-1.5
-                w-2 h-2 bg-red-500 rounded-full animate-pulse
-                ring-2 ring-white" />
-            </motion.button>
+                w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            </button>
 
-            {/* Quick Actions */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="hidden md:flex items-center gap-2
-                bg-gradient-to-r from-blue-500 to-purple-600
-                text-white font-medium px-4 py-2.5 rounded-xl
-                text-sm shadow-lg shadow-blue-500/30
-                hover:shadow-xl transition"
-            >
-              <Zap className="w-4 h-4" />
-              Quick Action
-            </motion.button>
+            {/* Date */}
+            {mounted && (
+              <div className="hidden md:flex items-center gap-2
+                bg-gray-100 rounded-xl px-3 py-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-600 font-medium">
+                  {currentDate}
+                </span>
+              </div>
+            )}
 
             {/* Avatar */}
-            <Avatar className="w-10 h-10 cursor-pointer
-              ring-2 ring-blue-500/20 hover:ring-blue-500/40
-              transition">
-              <AvatarFallback className="bg-gradient-to-br
-                from-blue-500 to-purple-600 text-white
-                text-sm font-bold">
+            <Avatar className="w-9 h-9 cursor-pointer
+              ring-2 ring-blue-500/30 hover:ring-blue-500 transition">
+              <AvatarFallback className="bg-blue-600
+                text-white text-sm font-bold">
                 A
               </AvatarFallback>
             </Avatar>
           </div>
         </header>
 
-        {/* Page Content with Breadcrumb */}
+        {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-6">
             {children}
