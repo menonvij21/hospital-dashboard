@@ -21,16 +21,11 @@ const navItems = [
     label: 'MANAGEMENT',
     items: [
       { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
+      { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
       { name: 'Patients', href: '/dashboard/patients', icon: Users },
       { name: 'Call Logs', href: '/dashboard/calls', icon: Phone },
     ]
   },
-  {
-    label: 'SETTINGS',
-    items: [
-      { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-    ]
-  }
 ]
 
 export default function DashboardLayout({
