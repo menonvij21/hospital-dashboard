@@ -3,19 +3,26 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import {
   TrendingUp, Phone, Calendar,
-  Users, Clock, CheckCircle,
-  Activity, RefreshCw, ArrowUpRight,
+  Users, CheckCircle,
+  RefreshCw, ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, BarChart, Bar,
-  PieChart, Pie, Cell, LineChart, Line
+  Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
 } from 'recharts'
 
 const API = process.env.NEXT_PUBLIC_API_URL
 
-const weeklyData = [
+type DataPoint = {
+  day: string
+  calls: number
+  appointments: number
+  patients: number
+}
+
+const weeklyData: DataPoint[] = [
   { day: 'Mon', calls: 12, appointments: 8, patients: 6 },
   { day: 'Tue', calls: 19, appointments: 14, patients: 11 },
   { day: 'Wed', calls: 15, appointments: 11, patients: 9 },
@@ -25,13 +32,13 @@ const weeklyData = [
   { day: 'Sun', calls: 10, appointments: 7, patients: 5 },
 ]
 
-const monthlyData = [
-  { month: 'Jan', calls: 320, appointments: 240 },
-  { month: 'Feb', calls: 280, appointments: 200 },
-  { month: 'Mar', calls: 410, appointments: 310 },
-  { month: 'Apr', calls: 380, appointments: 290 },
-  { month: 'May', calls: 450, appointments: 340 },
-  { month: 'Jun', calls: 420, appointments: 320 },
+const monthlyData: DataPoint[] = [
+  { day: 'Jan', calls: 320, appointments: 240, patients: 180 },
+  { day: 'Feb', calls: 280, appointments: 200, patients: 150 },
+  { day: 'Mar', calls: 410, appointments: 310, patients: 220 },
+  { day: 'Apr', calls: 380, appointments: 290, patients: 200 },
+  { day: 'May', calls: 450, appointments: 340, patients: 260 },
+  { day: 'Jun', calls: 420, appointments: 320, patients: 240 },
 ]
 
 const specialtyData = [
@@ -61,11 +68,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         fontSize: '12px',
         fontWeight: 600
       }}>
-        <p style={{ color: '#6b7280', marginBottom: '6px', margin: '0 0 6px' }}>
+        <p style={{ color: '#6b7280', margin: '0 0 6px' }}>
           {label}
         </p>
         {payload.map((p: any, i: number) => (
-          <p key={i} style={{ color: p.color, margin: '2px 0', fontWeight: 700 }}>
+          <p key={i} style={{
+            color: p.color,
+            margin: '2px 0',
+            fontWeight: 700
+          }}>
             {p.name}: {p.value}
           </p>
         ))}
@@ -99,8 +110,7 @@ export default function AnalyticsPage() {
 
   if (!mounted) return null
 
-  const chartData = period === 'weekly' ? weeklyData : monthlyData
-  const xKey = period === 'weekly' ? 'day' : 'month'
+  const chartData: DataPoint[] = period === 'weekly' ? weeklyData : monthlyData
 
   const kpis = [
     {
@@ -197,7 +207,8 @@ export default function AnalyticsPage() {
                   textTransform: 'capitalize',
                   backgroundColor: period === p ? 'white' : 'transparent',
                   color: period === p ? '#0f172a' : '#64748b',
-                  boxShadow: period === p ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  boxShadow: period === p
+                    ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -309,10 +320,20 @@ export default function AnalyticsPage() {
             }}>
               {loading ? '—' : kpi.value}
             </p>
-            <p style={{ fontSize: '13px', fontWeight: 600, color: '#475569', margin: '0 0 2px' }}>
+            <p style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: '#475569',
+              margin: '0 0 2px'
+            }}>
               {kpi.title}
             </p>
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, fontWeight: 500 }}>
+            <p style={{
+              fontSize: '11px',
+              color: '#94a3b8',
+              margin: 0,
+              fontWeight: 500
+            }}>
               {kpi.sub}
             </p>
           </div>
@@ -394,7 +415,7 @@ export default function AnalyticsPage() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis
-              dataKey={xKey}
+              dataKey="day"
               tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }}
               axisLine={false}
               tickLine={false}
@@ -436,7 +457,7 @@ export default function AnalyticsPage() {
         gap: '16px'
       }}>
 
-        {/* Specialties */}
+        {/* Specialties Pie */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '14px',
@@ -461,7 +482,11 @@ export default function AnalyticsPage() {
             By appointment volume
           </p>
 
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+          <div style={{
+            display: 'flex',
+            gap: '24px',
+            alignItems: 'center'
+          }}>
             <PieChart width={160} height={160}>
               <Pie
                 data={specialtyData}
@@ -473,7 +498,11 @@ export default function AnalyticsPage() {
                 dataKey="value"
               >
                 {specialtyData.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} stroke="none" />
+                  <Cell
+                    key={index}
+                    fill={entry.color}
+                    stroke="none"
+                  />
                 ))}
               </Pie>
               <Tooltip
@@ -553,7 +582,11 @@ export default function AnalyticsPage() {
             What Sara resolved per call
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}>
             {outcomeData.map((item, i) => (
               <div key={i}>
                 <div style={{
@@ -586,8 +619,7 @@ export default function AnalyticsPage() {
                     height: '100%',
                     width: `${item.value}%`,
                     backgroundColor: item.color,
-                    borderRadius: '10px',
-                    transition: 'width 1s ease'
+                    borderRadius: '10px'
                   }} />
                 </div>
               </div>
@@ -614,7 +646,7 @@ export default function AnalyticsPage() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
               }}>
-                Avg Call Duration
+                Avg Duration
               </p>
               <p style={{
                 fontSize: '20px',
