@@ -541,7 +541,7 @@ export default function DashboardPage() {
             </PieChart>
           </ResponsiveContainer>
 
-          <div style={{ marginTop: '16px', space: '8px' }}>
+          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {specialtyData.map((item, i) => (
               <div key={i} style={{
                 display: 'flex',
