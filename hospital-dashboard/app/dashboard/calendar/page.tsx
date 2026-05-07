@@ -817,4 +817,260 @@ export default function CalendarPage() {
                   setShowBooking(false)
                   setBookingStatus({ type: null, message: '' })
                   setSelectedSlot('')
-                
+                }}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} color="#64748b" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px' }}>
+
+              {/* Status Message */}
+              {bookingStatus.type && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  marginBottom: '20px',
+                  backgroundColor: bookingStatus.type === 'success'
+                    ? '#ecfdf5' : '#fef2f2',
+                  border: `1px solid ${bookingStatus.type === 'success'
+                    ? '#d1fae5' : '#fecaca'
+                  }`
+                }}>
+                  {bookingStatus.type === 'success'
+                    ? <CheckCircle size={18} color="#059669" />
+                    : <AlertCircle size={18} color="#dc2626" />
+                  }
+                  <p style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: bookingStatus.type === 'success' ? '#059669' : '#dc2626',
+                    margin: 0
+                  }}>
+                    {bookingStatus.message}
+                  </p>
+                </div>
+              )}
+
+              {/* Doctor Select */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: '#374151',
+                  display: 'block',
+                  marginBottom: '6px'
+                }}>
+                  Doctor
+                </label>
+                <select
+                  value={selectedDoctor}
+                  onChange={e => setSelectedDoctor(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#374151',
+                    outline: 'none',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  {DOCTORS.map(doc => (
+                    <option key={doc.name} value={doc.name}>
+                      {doc.name} · {doc.specialty}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Patient Name */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: '#374151',
+                  display: 'block',
+                  marginBottom: '6px'
+                }}>
+                  Patient Name
+                </label>
+                <input
+                  value={bookingForm.patient_name}
+                  onChange={e => setBookingForm({
+                    ...bookingForm,
+                    patient_name: e.target.value
+                  })}
+                  placeholder="Enter patient full name"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#374151',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={e => e.currentTarget.style.borderColor = '#6366f1'}
+                  onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+                />
+              </div>
+
+              {/* Patient Phone */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: '#374151',
+                  display: 'block',
+                  marginBottom: '6px'
+                }}>
+                  Phone Number
+                </label>
+                <input
+                  value={bookingForm.patient_phone}
+                  onChange={e => setBookingForm({
+                    ...bookingForm,
+                    patient_phone: e.target.value
+                  })}
+                  placeholder="+971 XX XXX XXXX"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#374151',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={e => e.currentTarget.style.borderColor = '#6366f1'}
+                  onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+                />
+              </div>
+
+              {/* Time Slots */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: '#374151',
+                  display: 'block',
+                  marginBottom: '10px'
+                }}>
+                  Select Time Slot
+                </label>
+                {slotsLoading ? (
+                  <p style={{ color: '#94a3b8', fontSize: '13px' }}>
+                    Loading slots...
+                  </p>
+                ) : (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: '6px',
+                    maxHeight: '180px',
+                    overflowY: 'auto'
+                  }}>
+                    {slots.map((slot, i) => (
+                      <button
+                        key={i}
+                        onClick={() => slot.available && setSelectedSlot(slot.time)}
+                        disabled={!slot.available}
+                        style={{
+                          padding: '8px 4px',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: slot.available ? 'pointer' : 'not-allowed',
+                          border: selectedSlot === slot.time
+                            ? '2px solid #6366f1'
+                            : '2px solid transparent',
+                          backgroundColor: !slot.available
+                            ? '#f8fafc'
+                            : selectedSlot === slot.time
+                            ? '#eef2ff'
+                            : '#f8fafc',
+                          color: !slot.available
+                            ? '#d1d5db'
+                            : selectedSlot === slot.time
+                            ? '#6366f1'
+                            : '#374151',
+                          transition: 'all 0.15s',
+                          position: 'relative'
+                        }}
+                      >
+                        {slot.time}
+                        {!slot.available && (
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: 'rgba(254,242,242,0.9)',
+                            borderRadius: '6px',
+                            fontSize: '9px',
+                            color: '#dc2626',
+                            fontWeight: 700
+                          }}>
+                            BOOKED
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm Button */}
+              <button
+                onClick={handleBook}
+                style={{
+                  width: '100%',
+                  padding: '13px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <CheckCircle size={16} />
+                Confirm Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
