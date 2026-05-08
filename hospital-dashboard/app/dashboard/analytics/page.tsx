@@ -2,10 +2,8 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import {
-  TrendingUp, Phone, Calendar,
-  Users, CheckCircle,
-  RefreshCw, ArrowUpRight,
-  ArrowDownRight
+  Phone, Calendar, Users, CheckCircle,
+  RefreshCw, ArrowUpRight
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -22,38 +20,22 @@ type DataPoint = {
   patients: number
 }
 
-const weeklyData: DataPoint[] = [
-  { day: 'Mon', calls: 12, appointments: 8, patients: 6 },
-  { day: 'Tue', calls: 19, appointments: 14, patients: 11 },
-  { day: 'Wed', calls: 15, appointments: 11, patients: 9 },
-  { day: 'Thu', calls: 25, appointments: 18, patients: 15 },
-  { day: 'Fri', calls: 22, appointments: 16, patients: 13 },
-  { day: 'Sat', calls: 18, appointments: 12, patients: 10 },
-  { day: 'Sun', calls: 10, appointments: 7, patients: 5 },
+const fallbackWeekly: DataPoint[] = [
+  { day: 'Mon', calls: 0, appointments: 0, patients: 0 },
+  { day: 'Tue', calls: 0, appointments: 0, patients: 0 },
+  { day: 'Wed', calls: 0, appointments: 0, patients: 0 },
+  { day: 'Thu', calls: 0, appointments: 0, patients: 0 },
+  { day: 'Fri', calls: 0, appointments: 0, patients: 0 },
+  { day: 'Sat', calls: 0, appointments: 0, patients: 0 },
+  { day: 'Sun', calls: 0, appointments: 0, patients: 0 },
 ]
 
-const monthlyData: DataPoint[] = [
-  { day: 'Jan', calls: 320, appointments: 240, patients: 180 },
-  { day: 'Feb', calls: 280, appointments: 200, patients: 150 },
-  { day: 'Mar', calls: 410, appointments: 310, patients: 220 },
-  { day: 'Apr', calls: 380, appointments: 290, patients: 200 },
-  { day: 'May', calls: 450, appointments: 340, patients: 260 },
-  { day: 'Jun', calls: 420, appointments: 320, patients: 240 },
+const fallbackSpecialty = [
+  { name: 'No Data Yet', value: 100, color: '#e2e8f0' },
 ]
 
-const specialtyData = [
-  { name: 'Cardiology', value: 28, color: '#6366f1' },
-  { name: 'Orthopedics', value: 22, color: '#8b5cf6' },
-  { name: 'General Med', value: 20, color: '#a78bfa' },
-  { name: 'Pediatrics', value: 18, color: '#c4b5fd' },
-  { name: 'Others', value: 12, color: '#e0e7ff' },
-]
-
-const outcomeData = [
-  { name: 'Appointment Booked', value: 45, color: '#10b981' },
-  { name: 'Info Provided', value: 30, color: '#6366f1' },
-  { name: 'Emergency', value: 10, color: '#ef4444' },
-  { name: 'Transferred', value: 15, color: '#f59e0b' },
+const fallbackOutcome = [
+  { name: 'No Data Yet', value: 100, color: '#e2e8f0' },
 ]
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -68,7 +50,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         fontSize: '12px',
         fontWeight: 600
       }}>
-        <p style={{ color: '#6b7280', margin: '0 0 6px' }}>
+        <p style={{
+          color: '#6b7280',
+          margin: '0 0 6px'
+        }}>
           {label}
         </p>
         {payload.map((p: any, i: number) => (
@@ -90,12 +75,39 @@ export default function AnalyticsPage() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
-  const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly')
+  const [realChartData, setRealChartData] = useState<DataPoint[]>([])
+  const [realSpecialtyData, setRealSpecialtyData] = useState<any[]>([])
+  const [realOutcomeData, setRealOutcomeData] = useState<any[]>([])
+  const [hasRealData, setHasRealData] = useState(false)
 
   const fetchStats = async () => {
     try {
-      const res = await axios.get(`${API}/api/dashboard/stats`)
-      setStats(res.data)
+      const [statsRes, chartRes] = await Promise.all([
+        axios.get(`${API}/api/dashboard/stats`),
+        axios.get(`${API}/api/dashboard/chart-data`)
+      ])
+
+      setStats(statsRes.data)
+
+      // Only use real data if there is actual data
+      const chartData = chartRes.data.chart_data || []
+      const hasData = chartData.some(
+        (d: any) => d.calls > 0 || d.appointments > 0
+      )
+
+      if (hasData) {
+        setRealChartData(chartData)
+        setHasRealData(true)
+      }
+
+      if (chartRes.data.specialty_data?.length > 0) {
+        setRealSpecialtyData(chartRes.data.specialty_data)
+      }
+
+      if (chartRes.data.outcome_data?.length > 0) {
+        setRealOutcomeData(chartRes.data.outcome_data)
+      }
+
     } catch (e) {
       console.error(e)
     } finally {
@@ -110,14 +122,24 @@ export default function AnalyticsPage() {
 
   if (!mounted) return null
 
-  const chartData: DataPoint[] = period === 'weekly' ? weeklyData : monthlyData
+  const chartData: DataPoint[] = realChartData.length > 0
+    ? realChartData
+    : fallbackWeekly
+
+  const displaySpecialtyData = realSpecialtyData.length > 0
+    ? realSpecialtyData
+    : fallbackSpecialty
+
+  const displayOutcomeData = realOutcomeData.length > 0
+    ? realOutcomeData
+    : fallbackOutcome
 
   const kpis = [
     {
       title: 'Total Calls',
       value: stats?.total_calls ?? 0,
-      change: '+24.1%',
-      up: true,
+      change: stats?.total_calls > 0 ? 'Real Data' : 'No calls yet',
+      up: stats?.total_calls > 0,
       icon: Phone,
       color: '#6366f1',
       bg: '#eef2ff',
@@ -126,8 +148,9 @@ export default function AnalyticsPage() {
     {
       title: 'Appointments',
       value: stats?.total_appointments ?? 0,
-      change: '+12.5%',
-      up: true,
+      change: stats?.total_appointments > 0
+        ? 'Real Data' : 'No data yet',
+      up: stats?.total_appointments > 0,
       icon: Calendar,
       color: '#10b981',
       bg: '#ecfdf5',
@@ -136,22 +159,23 @@ export default function AnalyticsPage() {
     {
       title: 'Patients',
       value: stats?.total_patients ?? 0,
-      change: '+8.2%',
-      up: true,
+      change: stats?.total_patients > 0
+        ? 'Real Data' : 'No data yet',
+      up: stats?.total_patients > 0,
       icon: Users,
       color: '#8b5cf6',
       bg: '#f5f3ff',
       sub: 'registered'
     },
     {
-      title: 'Success Rate',
-      value: '98%',
-      change: '+2.1%',
+      title: 'Confirmed',
+      value: stats?.confirmed ?? 0,
+      change: `${stats?.pending ?? 0} pending`,
       up: true,
       icon: CheckCircle,
       color: '#f59e0b',
       bg: '#fffbeb',
-      sub: 'call completion'
+      sub: 'appointments'
     },
   ]
 
@@ -181,63 +205,68 @@ export default function AnalyticsPage() {
             margin: 0,
             fontWeight: 500
           }}>
-            Sara AI performance insights
+            {hasRealData
+              ? '✅ Showing real data from MongoDB'
+              : '⚠️ No real data yet - make calls to see analytics'
+            }
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {/* Period Toggle */}
-          <div style={{
+        <button
+          onClick={fetchStats}
+          style={{
             display: 'flex',
-            backgroundColor: '#f1f5f9',
-            padding: '4px',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '9px 18px',
             borderRadius: '10px',
-            gap: '2px'
-          }}>
-            {(['weekly', 'monthly'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                  backgroundColor: period === p ? 'white' : 'transparent',
-                  color: period === p ? '#0f172a' : '#64748b',
-                  boxShadow: period === p
-                    ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={fetchStats}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '9px 18px',
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: 'white',
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#374151',
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}
-          >
-            <RefreshCw size={13} />
-            Refresh
-          </button>
-        </div>
+            border: '1px solid #e2e8f0',
+            backgroundColor: 'white',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: '#374151',
+            cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          }}
+        >
+          <RefreshCw size={13} />
+          Refresh
+        </button>
       </div>
+
+      {/* No Data Banner */}
+      {!hasRealData && !loading && (
+        <div style={{
+          backgroundColor: '#fffbeb',
+          border: '1px solid #fef3c7',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <span style={{ fontSize: '20px' }}>📊</span>
+          <div>
+            <p style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#92400e',
+              margin: '0 0 2px'
+            }}>
+              Analytics will show real data after calls
+            </p>
+            <p style={{
+              fontSize: '12px',
+              color: '#b45309',
+              margin: 0,
+              fontWeight: 500
+            }}>
+              Make calls through Sara AI and data will
+              automatically appear here
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div style={{
@@ -257,16 +286,17 @@ export default function AnalyticsPage() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
               position: 'relative',
               overflow: 'hidden',
-              transition: 'all 0.2s',
-              cursor: 'default'
+              transition: 'all 0.2s'
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(0,0,0,0.1)'
+              e.currentTarget.style.boxShadow =
+                '0 8px 25px -5px rgba(0,0,0,0.1)'
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
+              e.currentTarget.style.boxShadow =
+                '0 1px 3px rgba(0,0,0,0.04)'
             }}
           >
             <div style={{
@@ -297,17 +327,14 @@ export default function AnalyticsPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '3px',
-                fontSize: '11px',
+                fontSize: '10px',
                 fontWeight: 700,
-                color: kpi.up ? '#10b981' : '#ef4444',
-                backgroundColor: kpi.up ? '#ecfdf5' : '#fef2f2',
+                color: kpi.up ? '#10b981' : '#94a3b8',
+                backgroundColor: kpi.up ? '#ecfdf5' : '#f8fafc',
                 padding: '3px 8px',
                 borderRadius: '6px'
               }}>
-                {kpi.up
-                  ? <ArrowUpRight size={11} />
-                  : <ArrowDownRight size={11} />
-                }
+                {kpi.up && <ArrowUpRight size={10} />}
                 {kpi.change}
               </div>
             </div>
@@ -362,7 +389,7 @@ export default function AnalyticsPage() {
               color: '#0f172a',
               margin: '0 0 2px'
             }}>
-              Performance Overview
+              Calls & Appointments by Day
             </h3>
             <p style={{
               fontSize: '12px',
@@ -370,7 +397,10 @@ export default function AnalyticsPage() {
               margin: 0,
               fontWeight: 500
             }}>
-              Calls & appointments {period} trend
+              {hasRealData
+                ? 'Real data from your MongoDB database'
+                : 'Waiting for real call data...'
+              }
             </p>
           </div>
           <div style={{ display: 'flex', gap: '16px' }}>
@@ -432,7 +462,12 @@ export default function AnalyticsPage() {
               stroke="#6366f1"
               strokeWidth={2.5}
               fill="url(#gCalls)"
-              dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: 'white' }}
+              dot={{
+                r: 4,
+                fill: '#6366f1',
+                strokeWidth: 2,
+                stroke: 'white'
+              }}
               activeDot={{ r: 6 }}
               name="Calls"
             />
@@ -442,7 +477,12 @@ export default function AnalyticsPage() {
               stroke="#10b981"
               strokeWidth={2.5}
               fill="url(#gAppts)"
-              dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: 'white' }}
+              dot={{
+                r: 4,
+                fill: '#10b981',
+                strokeWidth: 2,
+                stroke: 'white'
+              }}
               activeDot={{ r: 6 }}
               name="Appointments"
             />
@@ -479,7 +519,10 @@ export default function AnalyticsPage() {
             margin: '0 0 24px',
             fontWeight: 500
           }}>
-            By appointment volume
+            {realSpecialtyData.length > 0
+              ? 'Real data from appointments'
+              : 'No appointment data yet'
+            }
           </p>
 
           <div style={{
@@ -489,7 +532,7 @@ export default function AnalyticsPage() {
           }}>
             <PieChart width={160} height={160}>
               <Pie
-                data={specialtyData}
+                data={displaySpecialtyData}
                 cx={75}
                 cy={75}
                 innerRadius={45}
@@ -497,7 +540,7 @@ export default function AnalyticsPage() {
                 paddingAngle={3}
                 dataKey="value"
               >
-                {specialtyData.map((entry, index) => (
+                {displaySpecialtyData.map((entry, index) => (
                   <Cell
                     key={index}
                     fill={entry.color}
@@ -517,12 +560,13 @@ export default function AnalyticsPage() {
             </PieChart>
 
             <div style={{ flex: 1 }}>
-              {specialtyData.map((item, i) => (
+              {displaySpecialtyData.map((item, i) => (
                 <div key={i} style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  marginBottom: i < specialtyData.length - 1 ? '10px' : 0
+                  marginBottom: i < displaySpecialtyData.length - 1
+                    ? '10px' : 0
                 }}>
                   <div style={{
                     display: 'flex',
@@ -579,7 +623,10 @@ export default function AnalyticsPage() {
             margin: '0 0 24px',
             fontWeight: 500
           }}>
-            What Sara resolved per call
+            {realOutcomeData.length > 0
+              ? 'Real data from completed calls'
+              : 'No call data yet'
+            }
           </p>
 
           <div style={{
@@ -587,7 +634,7 @@ export default function AnalyticsPage() {
             flexDirection: 'column',
             gap: '14px'
           }}>
-            {outcomeData.map((item, i) => (
+            {displayOutcomeData.map((item, i) => (
               <div key={i}>
                 <div style={{
                   display: 'flex',
@@ -626,7 +673,7 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
-          {/* Summary */}
+          {/* Summary Stats */}
           <div style={{
             marginTop: '24px',
             padding: '16px',
@@ -637,64 +684,64 @@ export default function AnalyticsPage() {
             justifyContent: 'space-between',
             alignItems: 'center'
           }}>
-            <div>
+            <div style={{ textAlign: 'center' }}>
               <p style={{
                 fontSize: '11px',
                 color: '#94a3b8',
-                margin: '0 0 2px',
+                margin: '0 0 4px',
                 fontWeight: 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
               }}>
-                Avg Duration
+                Total Calls
               </p>
               <p style={{
-                fontSize: '20px',
+                fontSize: '22px',
                 fontWeight: 800,
                 color: '#0f172a',
                 margin: 0
               }}>
-                3:24
+                {stats?.total_calls ?? 0}
               </p>
             </div>
-            <div>
+            <div style={{ textAlign: 'center' }}>
               <p style={{
                 fontSize: '11px',
                 color: '#94a3b8',
-                margin: '0 0 2px',
+                margin: '0 0 4px',
                 fontWeight: 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
               }}>
-                Satisfaction
+                Booked
               </p>
               <p style={{
-                fontSize: '20px',
+                fontSize: '22px',
                 fontWeight: 800,
                 color: '#10b981',
                 margin: 0
               }}>
-                4.9 ⭐
+                {stats?.confirmed ?? 0}
               </p>
             </div>
-            <div>
+            <div style={{ textAlign: 'center' }}>
               <p style={{
                 fontSize: '11px',
                 color: '#94a3b8',
-                margin: '0 0 2px',
+                margin: '0 0 4px',
                 fontWeight: 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
               }}>
-                Resolution
+                Patients
               </p>
               <p style={{
-                fontSize: '20px',
+                fontSize: '22px',
                 fontWeight: 800,
                 color: '#6366f1',
                 margin: 0
               }}>
-                98%
+                {stats?.total_patients ?? 0}
               </p>
             </div>
           </div>
