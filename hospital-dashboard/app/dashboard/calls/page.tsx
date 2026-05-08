@@ -4,7 +4,8 @@ import axios from 'axios'
 import {
   Phone, Search, RefreshCw, Clock,
   PhoneIncoming, PhoneOutgoing,
-  Calendar, User, MessageSquare
+  Calendar, MessageSquare, CheckCircle,
+  AlertCircle, TrendingUp
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL
@@ -34,7 +35,8 @@ export default function CallsPage() {
 
   const filtered = calls.filter(call =>
     call.caller_phone?.toLowerCase().includes(search.toLowerCase()) ||
-    call.outcome?.toLowerCase().includes(search.toLowerCase())
+    call.outcome?.toLowerCase().includes(search.toLowerCase()) ||
+    call.call_summary?.toLowerCase().includes(search.toLowerCase())
   )
 
   if (!mounted) return null
@@ -105,7 +107,7 @@ export default function CallsPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by phone or outcome..."
+          placeholder="Search by phone, outcome or summary..."
           style={{
             width: '100%',
             padding: '10px 14px 10px 38px',
@@ -119,7 +121,8 @@ export default function CallsPage() {
           }}
           onFocus={e => {
             e.currentTarget.style.borderColor = '#6366f1'
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'
+            e.currentTarget.style.boxShadow =
+              '0 0 0 3px rgba(99,102,241,0.1)'
           }}
           onBlur={e => {
             e.currentTarget.style.borderColor = '#e2e8f0'
@@ -131,7 +134,7 @@ export default function CallsPage() {
       {/* Layout */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 380px',
+        gridTemplateColumns: '1fr 400px',
         gap: '16px',
         alignItems: 'start'
       }}>
@@ -145,7 +148,11 @@ export default function CallsPage() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
         }}>
           {loading ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+            <div style={{
+              padding: '60px',
+              textAlign: 'center',
+              color: '#94a3b8'
+            }}>
               Loading...
             </div>
           ) : filtered.length === 0 ? (
@@ -162,7 +169,12 @@ export default function CallsPage() {
               }}>
                 <Phone size={24} color="#94a3b8" />
               </div>
-              <p style={{ fontSize: '15px', fontWeight: 700, color: '#374151', margin: '0 0 4px' }}>
+              <p style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: '#374151',
+                margin: '0 0 4px'
+              }}>
                 No calls yet
               </p>
               <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
@@ -179,9 +191,11 @@ export default function CallsPage() {
                   alignItems: 'center',
                   gap: '14px',
                   padding: '14px 20px',
-                  borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none',
+                  borderBottom: i < filtered.length - 1
+                    ? '1px solid #f8fafc' : 'none',
                   borderLeft: selectedCall?.call_id === call.call_id
-                    ? '3px solid #6366f1' : '3px solid transparent',
+                    ? '3px solid #6366f1'
+                    : '3px solid transparent',
                   backgroundColor: selectedCall?.call_id === call.call_id
                     ? '#fafbff' : 'transparent',
                   cursor: 'pointer',
@@ -213,6 +227,7 @@ export default function CallsPage() {
                     : <PhoneOutgoing size={16} color="white" />
                   }
                 </div>
+
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{
                     fontSize: '13px',
@@ -229,11 +244,15 @@ export default function CallsPage() {
                     fontSize: '11px',
                     color: '#94a3b8',
                     margin: '2px 0 0',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }}>
-                    {call.outcome}
+                    {call.call_summary || call.outcome || 'No summary'}
                   </p>
                 </div>
+
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -257,10 +276,12 @@ export default function CallsPage() {
                     fontWeight: 700,
                     padding: '2px 8px',
                     borderRadius: '5px',
-                    backgroundColor: call.call_type === 'inbound' ? '#ecfdf5' : '#eef2ff',
-                    color: call.call_type === 'inbound' ? '#059669' : '#6366f1'
+                    backgroundColor: call.status === 'completed'
+                      ? '#ecfdf5' : '#fef9c3',
+                    color: call.status === 'completed'
+                      ? '#059669' : '#ca8a04'
                   }}>
-                    {call.call_type}
+                    {call.status}
                   </span>
                   {call.appointment_booked && (
                     <span style={{
@@ -306,23 +327,48 @@ export default function CallsPage() {
           </div>
 
           {selectedCall ? (
-            <div style={{ padding: '20px' }}>
+            <div style={{
+              padding: '20px',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}>
+
+              {/* Basic Info */}
               {[
-                { label: 'Call ID', value: selectedCall.call_id?.slice(-8) || 'N/A' },
-                { label: 'Phone', value: selectedCall.caller_phone || 'Unknown' },
-                { label: 'Type', value: selectedCall.call_type },
-                { label: 'Duration', value: selectedCall.duration || 'N/A' },
-                { label: 'Outcome', value: selectedCall.outcome },
-                { label: 'Language', value: selectedCall.language || 'English' },
+                {
+                  label: 'Call ID',
+                  value: selectedCall.call_id?.slice(-12) || 'N/A'
+                },
+                {
+                  label: 'Phone',
+                  value: selectedCall.caller_phone || 'Unknown'
+                },
+                {
+                  label: 'Type',
+                  value: selectedCall.call_type || 'N/A'
+                },
+                {
+                  label: 'Duration',
+                  value: selectedCall.duration || 'N/A'
+                },
+                {
+                  label: 'Language',
+                  value: selectedCall.language || 'English'
+                },
+                {
+                  label: 'Outcome',
+                  value: selectedCall.outcome || 'N/A'
+                },
               ].map((item, i) => (
                 <div key={i} style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   padding: '10px 0',
-                  borderBottom: i < 5 ? '1px solid #f8fafc' : 'none'
+                  borderBottom: i < 5
+                    ? '1px solid #f8fafc' : 'none'
                 }}>
                   <span style={{
-                    fontSize: '12px',
+                    fontSize: '11px',
                     fontWeight: 600,
                     color: '#94a3b8',
                     textTransform: 'uppercase',
@@ -345,6 +391,46 @@ export default function CallsPage() {
                 </div>
               ))}
 
+              {/* Sentiment & Success */}
+              {(selectedCall.user_sentiment ||
+                selectedCall.call_successful !== undefined) && (
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  marginTop: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  {selectedCall.user_sentiment && (
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      backgroundColor:
+                        selectedCall.user_sentiment === 'Positive'
+                          ? '#ecfdf5' : '#fef2f2',
+                      color: selectedCall.user_sentiment === 'Positive'
+                        ? '#059669' : '#dc2626'
+                    }}>
+                      😊 {selectedCall.user_sentiment}
+                    </span>
+                  )}
+                  {selectedCall.call_successful && (
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      backgroundColor: '#ecfdf5',
+                      color: '#059669'
+                    }}>
+                      ✅ Successful
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Appointment Booked */}
               {selectedCall.appointment_booked && (
                 <div style={{
                   marginTop: '16px',
@@ -357,7 +443,7 @@ export default function CallsPage() {
                     fontSize: '12px',
                     fontWeight: 700,
                     color: '#16a34a',
-                    margin: 0,
+                    margin: '0 0 4px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px'
@@ -368,7 +454,7 @@ export default function CallsPage() {
                   <p style={{
                     fontSize: '11px',
                     color: '#15803d',
-                    margin: '4px 0 0',
+                    margin: 0,
                     fontWeight: 500
                   }}>
                     ID: {selectedCall.appointment_id || 'N/A'}
@@ -376,7 +462,43 @@ export default function CallsPage() {
                 </div>
               )}
 
-              {selectedCall.transcript && (
+              {/* Call Summary */}
+              {selectedCall.call_summary && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #dcfce7'
+                }}>
+                  <p style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#16a34a',
+                    margin: '0 0 8px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <TrendingUp size={12} />
+                    AI Call Summary
+                  </p>
+                  <p style={{
+                    fontSize: '12px',
+                    color: '#166534',
+                    margin: 0,
+                    lineHeight: 1.6,
+                    fontWeight: 500
+                  }}>
+                    {selectedCall.call_summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Transcript */}
+              {selectedCall.transcript ? (
                 <div style={{ marginTop: '16px' }}>
                   <p style={{
                     fontSize: '11px',
@@ -397,16 +519,75 @@ export default function CallsPage() {
                     borderRadius: '10px',
                     border: '1px solid #f1f5f9',
                     padding: '14px',
-                    maxHeight: '250px',
+                    maxHeight: '300px',
                     overflowY: 'auto',
                     fontSize: '12px',
-                    color: '#475569',
-                    lineHeight: 1.7,
-                    fontWeight: 500,
-                    whiteSpace: 'pre-wrap'
+                    lineHeight: 1.8,
+                    fontWeight: 500
                   }}>
-                    {selectedCall.transcript}
+                    {selectedCall.transcript
+                      .split('\n')
+                      .filter((line: string) => line.trim())
+                      .map((line: string, i: number) => {
+                        const isAgent =
+                          line.toLowerCase().startsWith('agent:') ||
+                          line.toLowerCase().startsWith('sara:') ||
+                          line.toLowerCase().startsWith('assistant:')
+                        const isUser =
+                          line.toLowerCase().startsWith('user:') ||
+                          line.toLowerCase().startsWith('patient:') ||
+                          line.toLowerCase().startsWith('human:')
+
+                        return (
+                          <div key={i} style={{
+                            marginBottom: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: isAgent
+                              ? '#eef2ff'
+                              : isUser
+                              ? '#f0fdf4'
+                              : '#f8fafc',
+                            borderLeft: isAgent
+                              ? '3px solid #6366f1'
+                              : isUser
+                              ? '3px solid #10b981'
+                              : '3px solid #e2e8f0',
+                            color: isAgent
+                              ? '#3730a3'
+                              : isUser
+                              ? '#166534'
+                              : '#475569'
+                          }}>
+                            {line}
+                          </div>
+                        )
+                      })
+                    }
                   </div>
+                </div>
+              ) : (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #f1f5f9',
+                  textAlign: 'center'
+                }}>
+                  <MessageSquare size={20} color="#d1d5db"
+                    style={{ margin: '0 auto 8px' }} />
+                  <p style={{
+                    fontSize: '12px',
+                    color: '#94a3b8',
+                    margin: 0,
+                    fontWeight: 500
+                  }}>
+                    {selectedCall.status === 'ongoing'
+                      ? 'Call still in progress...'
+                      : 'No transcript for this call'
+                    }
+                  </p>
                 </div>
               )}
             </div>
@@ -415,7 +596,8 @@ export default function CallsPage() {
               padding: '60px 24px',
               textAlign: 'center'
             }}>
-              <Phone size={32} color="#d1d5db" style={{ margin: '0 auto 12px' }} />
+              <Phone size={32} color="#d1d5db"
+                style={{ margin: '0 auto 12px' }} />
               <p style={{
                 fontSize: '13px',
                 color: '#94a3b8',
