@@ -1,140 +1,425 @@
 'use client'
-
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
+import {
+  Calendar, Search, CheckCircle,
+  XCircle, RefreshCw, Trash2,
+  Clock, ArrowUpRight, Filter
+} from 'lucide-react'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000' // Fallback for debugging
+const API = process.env.NEXT_PUBLIC_API_URL
 
-export default function DebugAppointmentsPage() {
-  const [data, setData] = useState<any>(null)
+export default function AppointmentsPage() {
+  const [appointments, setAppointments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [response, setResponse] = useState<any>(null)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
+  const [mounted, setMounted] = useState(false)
 
   const fetchAppointments = async () => {
-    setLoading(true)
-    setError(null)
     try {
-      console.log('🔍 Fetching from:', `${API}/api/appointments?limit=100`)
-      
-      const res = await axios.get(`${API}/api/appointments?limit=100`, {
-        timeout: 10000
-      })
-      
-      console.log('✅ API Response:', res.data)
-      setResponse(res.data)
-      setData(res.data)
-    } catch (err: any) {
-      console.error('❌ API Error:', err.response?.data || err.message)
-      setError(err.response?.data?.message || err.message || 'Unknown error')
+      const res = await axios.get(`${API}/api/appointments?limit=100`)
+      setAppointments(res.data.appointments)
+    } catch (error) {
+      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  const testUpdate = async (id: string) => {
-    try {
-      console.log('🔄 Testing update for ID:', id)
-      const res = await axios.patch(`${API}/api/appointments/${id}`, { 
-        status: 'confirmed' 
-      })
-      console.log('✅ Update Response:', res.data)
-      await fetchAppointments()
-    } catch (err: any) {
-      console.error('❌ Update Error:', err.response?.data || err.message)
-    }
-  }
-
   useEffect(() => {
+    setMounted(true)
     fetchAppointments()
   }, [])
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>
-  if (error) return (
-    <div className="p-8 bg-red-50 border border-red-200 rounded-lg">
-      <h2 className="text-xl font-bold text-red-800 mb-4">API Error</h2>
-      <pre className="bg-red-100 p-4 rounded text-sm text-red-900">{error}</pre>
-      <button 
-        onClick={fetchAppointments}
-        className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg"
-      >
-        Retry
-      </button>
-    </div>
-  )
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await axios.patch(`${API}/api/appointments/${id}`, { status })
+      fetchAppointments()
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const deleteAppointment = async (id: string) => {
+    if (!confirm('Delete this appointment?')) return
+    try {
+      await axios.delete(`${API}/api/appointments/${id}`)
+      fetchAppointments()
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const filtered = appointments.filter(apt => {
+    const matchSearch =
+      apt.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
+      apt.doctor_name?.toLowerCase().includes(search.toLowerCase()) ||
+      apt.specialty?.toLowerCase().includes(search.toLowerCase())
+    const matchFilter = filter === 'all' || apt.status === filter
+    return matchSearch && matchFilter
+  })
+
+  if (!mounted) return null
+
+  const statusColors: any = {
+    confirmed: { bg: '#ecfdf5', color: '#059669', border: '#d1fae5' },
+    pending: { bg: '#fffbeb', color: '#d97706', border: '#fef3c7' },
+    cancelled: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' }
+  }
+
+  const filters = ['all', 'confirmed', 'pending', 'cancelled']
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
-      <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
-        <h1 className="text-2xl font-bold text-blue-900 mb-2">Debug Info</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <strong>API URL:</strong> <code className="bg-blue-100 px-2 py-1 rounded">{API}</code>
-          </div>
-          <div>
-            <strong>Response Structure:</strong>
-            <pre className="text-xs mt-1 bg-blue-100 p-2 rounded">{JSON.stringify(response, null, 2)}</pre>
-          </div>
+    <div style={{ fontFamily: "'Inter', sans-serif" }}>
+
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: '24px'
+      }}>
+        <div>
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: 800,
+            color: '#0f172a',
+            margin: '0 0 4px',
+            letterSpacing: '-0.03em'
+          }}>
+            Appointments
+          </h1>
+          <p style={{
+            fontSize: '13px',
+            color: '#94a3b8',
+            margin: 0,
+            fontWeight: 500
+          }}>
+            {appointments.length} total · {filtered.length} showing
+          </p>
         </div>
-        <button 
+        <button
           onClick={fetchAppointments}
-          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '9px 18px',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            backgroundColor: 'white',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: '#374151',
+            cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          }}
         >
-          🔄 Refresh Data
+          <RefreshCw size={13} />
+          Refresh
         </button>
       </div>
 
-      {data?.appointments?.length ? (
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold">Appointments ({data.appointments.length})</h2>
-          {data.appointments.map((apt: any) => (
-            <div key={apt.appointment_id} className="p-6 bg-white rounded-xl border shadow-sm hover:shadow-md transition-all">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <strong>Patient:</strong> {apt.patient_name || 'N/A'}
-                </div>
-                <div>
-                  <strong>Doctor:</strong> {apt.doctor_name || 'N/A'}
-                </div>
-                <div>
-                  <strong>ID:</strong> <code>{apt.appointment_id}</code>
-                </div>
-                <div>
-                  <strong>Status:</strong> <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">{apt.status}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => testUpdate(apt.appointment_id)}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600"
-                >
-                  Test Confirm
-                </button>
-                <button 
-                  onClick={() => testUpdate(apt.appointment_id.replace('confirmed', 'cancelled'))}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600"
-                >
-                  Test Cancel
-                </button>
-              </div>
-              <details className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <summary className="cursor-pointer font-medium text-sm">Full Data</summary>
-                <pre className="mt-2 text-xs overflow-auto max-h-40">{JSON.stringify(apt, null, 2)}</pre>
-              </details>
-            </div>
+      {/* Search & Filters */}
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        marginBottom: '20px',
+        flexWrap: 'wrap',
+        alignItems: 'center'
+      }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
+          <Search size={15} color="#94a3b8" style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)'
+          }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search patient, doctor, specialty..."
+            style={{
+              width: '100%',
+              padding: '10px 14px 10px 38px',
+              borderRadius: '10px',
+              border: '1px solid #e2e8f0',
+              backgroundColor: 'white',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#0f172a',
+              outline: 'none'
+            }}
+            onFocus={e => {
+              e.currentTarget.style.borderColor = '#6366f1'
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = '#e2e8f0'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          />
+        </div>
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          backgroundColor: '#f1f5f9',
+          padding: '4px',
+          borderRadius: '10px'
+        }}>
+          {filters.map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                padding: '7px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+                backgroundColor: filter === f ? 'white' : 'transparent',
+                color: filter === f ? '#0f172a' : '#64748b',
+                boxShadow: filter === f ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              {f}
+            </button>
           ))}
         </div>
-      ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-xl">
-          <div className="w-16 h-16 bg-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">📅</span>
+      </div>
+
+      {/* Table */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '14px',
+        border: '1px solid #f1f5f9',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+      }}>
+        {loading ? (
+          <div style={{
+            padding: '60px',
+            textAlign: 'center',
+            color: '#94a3b8',
+            fontSize: '13px'
+          }}>
+            Loading appointments...
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2">No appointments</h3>
-          <p className="text-gray-500 mb-4">Check your API response above</p>
-          <p className="text-sm text-gray-400">Response: {JSON.stringify(data)}</p>
-        </div>
-      )}
+        ) : filtered.length === 0 ? (
+          <div style={{
+            padding: '80px 24px',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '14px',
+              backgroundColor: '#f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <Calendar size={24} color="#94a3b8" />
+            </div>
+            <p style={{
+              fontSize: '15px',
+              fontWeight: 700,
+              color: '#374151',
+              margin: '0 0 4px'
+            }}>
+              No appointments found
+            </p>
+            <p style={{
+              fontSize: '13px',
+              color: '#94a3b8',
+              margin: 0
+            }}>
+              Appointments will appear when Sara books them
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Table Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.6fr 0.7fr',
+              padding: '12px 20px',
+              borderBottom: '1px solid #f1f5f9',
+              backgroundColor: '#fafbfc'
+            }}>
+              {['Patient', 'Doctor', 'Specialty', 'Date', 'Time', 'Status', 'Actions'].map(h => (
+                <span key={h} style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em'
+                }}>
+                  {h}
+                </span>
+              ))}
+            </div>
+
+            {/* Rows */}
+            {filtered.map((apt: any, i: number) => {
+              const sc = statusColors[apt.status] || statusColors.pending
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.6fr 0.7fr',
+                    padding: '14px 20px',
+                    borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none',
+                    alignItems: 'center',
+                    transition: 'background 0.15s',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbfc'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  {/* Patient */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      flexShrink: 0
+                    }}>
+                      {apt.patient_name?.charAt(0) || 'P'}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: '#111827', margin: 0 }}>
+                        {apt.patient_name}
+                      </p>
+                      <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, fontWeight: 500 }}>
+                        {apt.patient_phone || 'No phone'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Doctor */}
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>
+                    {apt.doctor_name}
+                  </span>
+
+                  {/* Specialty */}
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#6366f1',
+                    backgroundColor: '#eef2ff',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    width: 'fit-content'
+                  }}>
+                    {apt.specialty}
+                  </span>
+
+                  {/* Date */}
+                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#475569' }}>
+                    {apt.date || 'TBC'}
+                  </span>
+
+                  {/* Time */}
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <Clock size={11} color="#94a3b8" />
+                    {apt.time || 'TBC'}
+                  </span>
+
+                  {/* Status */}
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    backgroundColor: sc.bg,
+                    color: sc.color,
+                    textTransform: 'capitalize',
+                    width: 'fit-content'
+                  }}>
+                    {apt.status}
+                  </span>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); updateStatus(apt.appointment_id, 'confirmed') }}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        backgroundColor: '#ecfdf5',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Confirm"
+                    >
+                      <CheckCircle size={13} color="#059669" />
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); updateStatus(apt.appointment_id, 'cancelled') }}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        backgroundColor: '#fef2f2',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Cancel"
+                    >
+                      <XCircle size={13} color="#dc2626" />
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); deleteAppointment(apt.appointment_id) }}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        backgroundColor: '#f1f5f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Delete"
+                    >
+                      <Trash2 size={13} color="#64748b" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </>
+        )}
+      </div>
     </div>
   )
 }
-          
