@@ -89,10 +89,10 @@ export default function AnalyticsPage() {
 
       setStats(statsRes.data)
 
-      // Only use real data if there is actual data
+      // ✅ FIXED: Added patients check
       const chartData = chartRes.data.chart_data || []
       const hasData = chartData.some(
-        (d: any) => d.calls > 0 || d.appointments > 0
+        (d: any) => d.calls > 0 || d.appointments > 0 || d.patients > 0
       )
 
       if (hasData) {
@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
       }
 
     } catch (e) {
-      console.error(e)
+      console.error('Analytics fetch error:', e)
     } finally {
       setLoading(false)
     }
@@ -179,6 +179,21 @@ export default function AnalyticsPage() {
     },
   ]
 
+  const renderIcon = (icon: any, color: string) => {
+    switch (icon) {
+      case Phone:
+        return <Phone size={18} color={color} />
+      case Calendar:
+        return <Calendar size={18} color={color} />
+      case Users:
+        return <Users size={18} color={color} />
+      case CheckCircle:
+        return <CheckCircle size={18} color={color} />
+      default:
+        return null
+    }
+  }
+
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }}>
 
@@ -213,6 +228,7 @@ export default function AnalyticsPage() {
         </div>
         <button
           onClick={fetchStats}
+          disabled={loading}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -224,12 +240,13 @@ export default function AnalyticsPage() {
             fontSize: '13px',
             fontWeight: 600,
             color: '#374151',
-            cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            cursor: loading ? 'not-allowed' : 'pointer',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            opacity: loading ? 0.6 : 1
           }}
         >
-          <RefreshCw size={13} />
-          Refresh
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
@@ -289,9 +306,11 @@ export default function AnalyticsPage() {
               transition: 'all 0.2s'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow =
-                '0 8px 25px -5px rgba(0,0,0,0.1)'
+              if (!loading) {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow =
+                  '0 8px 25px -5px rgba(0,0,0,0.1)'
+              }
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)'
@@ -321,7 +340,7 @@ export default function AnalyticsPage() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <kpi.icon size={18} color={kpi.color} />
+                {renderIcon(kpi.icon, kpi.color)}
               </div>
               <div style={{
                 display: 'flex',
@@ -345,7 +364,7 @@ export default function AnalyticsPage() {
               margin: '0 0 2px',
               letterSpacing: '-0.02em'
             }}>
-              {loading ? '—' : kpi.value}
+              {loading ? '—' : kpi.value.toLocaleString()}
             </p>
             <p style={{
               fontSize: '13px',
@@ -542,7 +561,7 @@ export default function AnalyticsPage() {
               >
                 {displaySpecialtyData.map((entry, index) => (
                   <Cell
-                    key={index}
+                    key={`cell-${index}`}
                     fill={entry.color}
                     stroke="none"
                   />
@@ -561,7 +580,7 @@ export default function AnalyticsPage() {
 
             <div style={{ flex: 1 }}>
               {displaySpecialtyData.map((item, i) => (
-                <div key={i} style={{
+                <div key={`specialty-${i}`} style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -635,7 +654,7 @@ export default function AnalyticsPage() {
             gap: '14px'
           }}>
             {displayOutcomeData.map((item, i) => (
-              <div key={i}>
+              <div key={`outcome-${i}`}>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -664,9 +683,10 @@ export default function AnalyticsPage() {
                 }}>
                   <div style={{
                     height: '100%',
-                    width: `${item.value}%`,
+                    width: `${Math.min(item.value, 100)}%`,
                     backgroundColor: item.color,
-                    borderRadius: '10px'
+                    borderRadius: '10px',
+                    transition: 'width 0.3s ease'
                   }} />
                 </div>
               </div>
@@ -701,7 +721,7 @@ export default function AnalyticsPage() {
                 color: '#0f172a',
                 margin: 0
               }}>
-                {stats?.total_calls ?? 0}
+                {loading ? '—' : (stats?.total_calls ?? 0).toLocaleString()}
               </p>
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -721,7 +741,7 @@ export default function AnalyticsPage() {
                 color: '#10b981',
                 margin: 0
               }}>
-                {stats?.confirmed ?? 0}
+                {loading ? '—' : (stats?.confirmed ?? 0).toLocaleString()}
               </p>
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -741,7 +761,7 @@ export default function AnalyticsPage() {
                 color: '#6366f1',
                 margin: 0
               }}>
-                {stats?.total_patients ?? 0}
+                {loading ? '—' : (stats?.total_patients ?? 0).toLocaleString()}
               </p>
             </div>
           </div>
