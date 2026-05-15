@@ -19,9 +19,10 @@ export default function AppointmentsPage() {
   const fetchAppointments = async () => {
     try {
       const res = await axios.get(`${API}/api/appointments?limit=100`)
-      setAppointments(res.data.appointments)
+      setAppointments(res.data.appointments || []) // ✅ Added fallback for undefined
     } catch (error) {
       console.error(error)
+      setAppointments([]) // ✅ Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -134,7 +135,8 @@ export default function AppointmentsPage() {
             position: 'absolute',
             left: '12px',
             top: '50%',
-            transform: 'translateY(-50%)'
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none' // ✅ Prevent icon from blocking input
           }} />
           <input
             value={search}
@@ -149,7 +151,8 @@ export default function AppointmentsPage() {
               fontSize: '13px',
               fontWeight: 500,
               color: '#0f172a',
-              outline: 'none'
+              outline: 'none',
+              boxSizing: 'border-box' // ✅ Fix width overflow
             }}
             onFocus={e => {
               e.currentTarget.style.borderColor = '#6366f1'
@@ -270,7 +273,7 @@ export default function AppointmentsPage() {
               const sc = statusColors[apt.status] || statusColors.pending
               return (
                 <div
-                  key={i}
+                  key={apt.appointment_id || i} // ✅ Use unique ID instead of index
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.6fr 0.7fr',
@@ -298,11 +301,11 @@ export default function AppointmentsPage() {
                       fontSize: '12px',
                       flexShrink: 0
                     }}>
-                      {apt.patient_name?.charAt(0) || 'P'}
+                      {apt.patient_name?.charAt(0)?.toUpperCase() || 'P'}
                     </div>
                     <div>
                       <p style={{ fontSize: '13px', fontWeight: 700, color: '#111827', margin: 0 }}>
-                        {apt.patient_name}
+                        {apt.patient_name || 'Unknown'}
                       </p>
                       <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, fontWeight: 500 }}>
                         {apt.patient_phone || 'No phone'}
@@ -312,7 +315,7 @@ export default function AppointmentsPage() {
 
                   {/* Doctor */}
                   <span style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>
-                    {apt.doctor_name}
+                    {apt.doctor_name || 'TBC'}
                   </span>
 
                   {/* Specialty */}
@@ -325,7 +328,7 @@ export default function AppointmentsPage() {
                     borderRadius: '6px',
                     width: 'fit-content'
                   }}>
-                    {apt.specialty}
+                    {apt.specialty || 'General'}
                   </span>
 
                   {/* Date */}
@@ -357,7 +360,7 @@ export default function AppointmentsPage() {
                     textTransform: 'capitalize',
                     width: 'fit-content'
                   }}>
-                    {apt.status}
+                    {apt.status || 'pending'}
                   </span>
 
                   {/* Actions */}
