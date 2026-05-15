@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Calendar, Users,
+  LayoutDashboard, Calendar, CalendarCheck, Users,
   Phone, Bell, Search, Settings,
   Stethoscope, LogOut, ChevronLeft,
   Activity, BarChart3, Menu
@@ -20,7 +20,7 @@ const navItems = [
   {
     label: 'MANAGEMENT',
     items: [
-      { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
+      { name: 'Appointments', href: '/dashboard/appointments', icon: CalendarCheck },
       { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
       { name: 'Patients', href: '/dashboard/patients', icon: Users },
       { name: 'Call Logs', href: '/dashboard/calls', icon: Phone },
@@ -365,46 +365,24 @@ export default function DashboardLayout({
           padding: '0 28px',
           flexShrink: 0
         }}>
-          {/* Search */}
+          {/* Page identity */}
           <div style={{
-            position: 'relative',
-            width: '320px'
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '7px 14px',
+            borderRadius: '10px',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #f1f5f9',
           }}>
-            <Search
-              size={15}
-              color="#94a3b8"
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)'
-              }}
-            />
-            <input
-              placeholder="Search patients, doctors..."
-              style={{
-                width: '100%',
-                padding: '9px 14px 9px 38px',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#f8fafc',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#0f172a',
-                outline: 'none',
-                transition: 'all 0.2s'
-              }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = '#6366f1'
-                e.currentTarget.style.backgroundColor = 'white'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = '#e2e8f0'
-                e.currentTarget.style.backgroundColor = '#f8fafc'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            />
+            <Stethoscope size={15} color="#6366f1" />
+            <span style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: '#374151'
+            }}>
+              Universal Hospital · Admin
+            </span>
           </div>
 
           {/* Right */}
