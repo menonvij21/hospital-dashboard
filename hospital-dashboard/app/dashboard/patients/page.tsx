@@ -15,9 +15,10 @@ export default function PatientsPage() {
   const [mounted, setMounted] = useState(false)
 
   const fetchPatients = async () => {
+    setLoading(true)
     try {
       const res = await axios.get(`${API}/api/patients?limit=100`)
-      setPatients(res.data.patients)
+      setPatients(res.data.patients ?? [])
     } catch (error) {
       console.error(error)
     } finally {
@@ -28,6 +29,8 @@ export default function PatientsPage() {
   useEffect(() => {
     setMounted(true)
     fetchPatients()
+    const t = setInterval(fetchPatients, 30000)
+    return () => clearInterval(t)
   }, [])
 
   const filtered = patients.filter(p =>
@@ -68,6 +71,7 @@ export default function PatientsPage() {
         </div>
         <button
           onClick={fetchPatients}
+          disabled={loading}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -79,12 +83,13 @@ export default function PatientsPage() {
             fontSize: '13px',
             fontWeight: 600,
             color: '#374151',
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1,
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}
         >
           <RefreshCw size={13} />
-          Refresh
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
