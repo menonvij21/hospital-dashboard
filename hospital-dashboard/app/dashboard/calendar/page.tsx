@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import axios from 'axios'
 import {
   ChevronLeft, ChevronRight, Calendar,
@@ -29,23 +29,51 @@ const MONTHS = [
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+interface Slot {
+  time: string
+  available: boolean
+  status: 'available' | 'booked'
+}
+
+interface Appointment {
+  id: string
+  patient: string
+  doctor: string
+  specialty: string
+  time: string
+  status: 'confirmed' | 'pending' | 'cancelled'
+}
+
+interface DayData {
+  total: number
+  confirmed: number
+  pending: number
+  cancelled: number
+  appointments: Appointment[]
+}
+
+interface CalendarData {
+  [date: string]: DayData
+}
+
 export default function CalendarPage() {
   const [mounted, setMounted] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<string>('')
-  const [calendarData, setCalendarData] = useState<any>({})
+  const [calendarData, setCalendarData] = useState<CalendarData>({})
   const [loading, setLoading] = useState(false)
 
   // Slot booking states
   const [showBooking, setShowBooking] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState(DOCTORS[0].name)
-  const [slots, setSlots] = useState<any[]>([])
+  const [slots, setSlots] = useState<Slot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState('')
   const [bookingForm, setBookingForm] = useState({
     patient_name: '',
     patient_phone: '',
   })
+  const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingStatus, setBookingStatus] = useState<{
     type: 'success' | 'error' | null,
     message: string
@@ -65,85 +93,160 @@ export default function CalendarPage() {
   }, [currentDate, mounted])
 
   useEffect(() => {
-    if (selectedDate && selectedDoctor) {
+    if (selectedDate && selectedDoctor && mounted) {
       fetchSlots()
     }
-  }, [selectedDate, selectedDoctor])
+  }, [selectedDate, selectedDoctor, mounted])
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date): string => {
     const y = date.getFullYear()
     const m = String(date.getMonth() + 1).padStart(2, '0')
     const d = String(date.getDate()).padStart(2, '0')
     return `${y}-${m}-${d}`
   }
 
-  const formatDisplayDate = (dateStr: string) => {
+  const formatDisplayDate = (dateStr: string): string => {
     if (!dateStr) return ''
-    const [y, m, d] = dateStr.split('-')
-    return `${parseInt(d)} ${MONTHS[parseInt(m) - 1]} ${y}`
+    try {
+      const [y, m, d] = dateStr.split('-')
+      const monthIndex = parseInt(m, 10) - 1
+      if (monthIndex < 0 || monthIndex > 11) return dateStr
+      return `${parseInt(d, 10)} ${MONTHS[monthIndex]} ${y}`
+    } catch (e) {
+      return dateStr
+    }
   }
 
   const fetchMonthData = async () => {
     try {
       setLoading(true)
       const res = await axios.get(
-        `${API}/api/calendar/month?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`
+        `${API}/api/calendar/month`,
+        {
+          params: {
+            year: currentDate.getFullYear(),
+            month: currentDate.getMonth() + 1
+          }
+        }
       )
-      setCalendarData(res.data.data || {})
+      setCalendarData(res.data?.data || {})
     } catch (e) {
-      console.error(e)
+      console.error('Error fetching month data:', e)
+      setCalendarData({})
     } finally {
       setLoading(false)
     }
   }
 
   const fetchSlots = async () => {
+    if (!selectedDate || !selectedDoctor) return
+    
     try {
       setSlotsLoading(true)
       const res = await axios.get(
-        `${API}/api/calendar/slots?doctor_name=${encodeURIComponent(selectedDoctor)}&date=${selectedDate}`
+        `${API}/api/calendar/slots`,
+        {
+          params: {
+            doctor_name: selectedDoctor,
+            date: selectedDate
+          }
+        }
       )
-      setSlots(res.data.slots || [])
+      setSlots(res.data?.slots || [])
     } catch (e) {
-      console.error(e)
+      console.error('Error fetching slots:', e)
+      setSlots([])
     } finally {
       setSlotsLoading(false)
     }
   }
 
+  const validateBookingForm = (): string | null => {
+    if (!selectedSlot) {
+      return 'Please select a time slot'
+    }
+    if (!bookingForm.patient_name.trim()) {
+      return 'Please enter patient name'
+    }
+    if (bookingForm.patient_name.trim().length < 3) {
+      return 'Patient name must be at least 3 characters'
+    }
+    if (!bookingForm.patient_phone.trim()) {
+      return 'Please enter phone number'
+    }
+    // Basic phone validation
+    const phoneRegex = /^[\d\s\+\-\(\)]{10,}$/
+    if (!phoneRegex.test(bookingForm.patient_phone.trim())) {
+      return 'Please enter a valid phone number'
+    }
+    return null
+  }
+
   const handleBook = async () => {
-    if (!selectedSlot || !bookingForm.patient_name || !bookingForm.patient_phone) {
-      setBookingStatus({ type: 'error', message: 'Please fill all fields and select a time slot' })
+    // Validate form
+    const validationError = validateBookingForm()
+    if (validationError) {
+      setBookingStatus({ type: 'error', message: validationError })
+      setTimeout(() => {
+        setBookingStatus({ type: null, message: '' })
+      }, 3000)
       return
     }
 
     try {
+      setBookingLoading(true)
+      setBookingStatus({ type: null, message: '' })
+
       const doctor = DOCTORS.find(d => d.name === selectedDoctor)
       const res = await axios.post(`${API}/api/calendar/book`, {
         doctor_name: selectedDoctor,
         date: selectedDate,
         time: selectedSlot,
-        patient_name: bookingForm.patient_name,
-        patient_phone: bookingForm.patient_phone,
+        patient_name: bookingForm.patient_name.trim(),
+        patient_phone: bookingForm.patient_phone.trim(),
         specialty: doctor?.specialty || 'General Medicine'
       })
 
-      if (res.data.success) {
-        setBookingStatus({ type: 'success', message: `Appointment confirmed for ${bookingForm.patient_name}!` })
+      if (res.data?.success) {
+        setBookingStatus({ 
+          type: 'success', 
+          message: `Appointment confirmed for ${bookingForm.patient_name}!` 
+        })
+        
+        // Reset form
         setBookingForm({ patient_name: '', patient_phone: '' })
         setSelectedSlot('')
-        fetchSlots()
-        fetchMonthData()
+        
+        // Refresh data
+        await Promise.all([fetchSlots(), fetchMonthData()])
+        
+        // Close modal after delay
         setTimeout(() => {
           setShowBooking(false)
           setBookingStatus({ type: null, message: '' })
         }, 2000)
       } else {
-        setBookingStatus({ type: 'error', message: res.data.error || 'Booking failed' })
+        setBookingStatus({ 
+          type: 'error', 
+          message: res.data?.error || 'Booking failed. Please try again.' 
+        })
       }
-    } catch (e) {
-      setBookingStatus({ type: 'error', message: 'Something went wrong. Try again.' })
+    } catch (e: any) {
+      console.error('Booking error:', e)
+      const errorMessage = e.response?.data?.detail || 
+                          e.response?.data?.error || 
+                          'Something went wrong. Please try again.'
+      setBookingStatus({ type: 'error', message: errorMessage })
+    } finally {
+      setBookingLoading(false)
     }
+  }
+
+  const handleCloseModal = () => {
+    setShowBooking(false)
+    setBookingStatus({ type: null, message: '' })
+    setSelectedSlot('')
+    setBookingForm({ patient_name: '', patient_phone: '' })
   }
 
   // Calendar grid calculations
@@ -153,18 +256,18 @@ export default function CalendarPage() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const today = formatDate(new Date())
 
-  const getDateStr = (day: number) => {
+  const getDateStr = (day: number): string => {
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   }
 
-  const getDayData = (day: number) => {
+  const getDayData = (day: number): DayData | null => {
     const dateStr = getDateStr(day)
     return calendarData[dateStr] || null
   }
 
   if (!mounted) return null
 
-  const selectedDayData = calendarData[selectedDate]
+  const selectedDayData = selectedDate ? calendarData[selectedDate] : null
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -198,6 +301,7 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={fetchMonthData}
+            disabled={loading}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -209,10 +313,13 @@ export default function CalendarPage() {
               fontSize: '13px',
               fontWeight: 600,
               color: '#374151',
-              cursor: 'pointer'
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1
             }}
           >
-            <RefreshCw size={13} />
+            <RefreshCw size={13} style={{ 
+              animation: loading ? 'spin 1s linear infinite' : 'none' 
+            }} />
             Refresh
           </button>
           <button
@@ -574,7 +681,7 @@ export default function CalendarPage() {
             </div>
 
             <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {!selectedDayData ? (
+              {!selectedDayData || selectedDayData.appointments.length === 0 ? (
                 <div style={{
                   padding: '32px 20px',
                   textAlign: 'center'
@@ -591,8 +698,8 @@ export default function CalendarPage() {
                   </p>
                 </div>
               ) : (
-                selectedDayData.appointments.map((apt: any, i: number) => (
-                  <div key={i} style={{
+                selectedDayData.appointments.map((apt: Appointment, i: number) => (
+                  <div key={apt.id || i} style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
@@ -613,7 +720,7 @@ export default function CalendarPage() {
                       fontSize: '13px',
                       flexShrink: 0
                     }}>
-                      {apt.patient?.charAt(0) || 'P'}
+                      {apt.patient?.charAt(0)?.toUpperCase() || 'P'}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{
@@ -625,7 +732,7 @@ export default function CalendarPage() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {apt.patient}
+                        {apt.patient || 'Unknown Patient'}
                       </p>
                       <p style={{
                         fontSize: '11px',
@@ -636,7 +743,7 @@ export default function CalendarPage() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {apt.doctor} · {apt.time}
+                        {apt.doctor || 'TBA'} · {apt.time || 'TBA'}
                       </p>
                     </div>
                     <span style={{
@@ -694,7 +801,8 @@ export default function CalendarPage() {
                   color: '#374151',
                   backgroundColor: '#f8fafc',
                   outline: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  boxSizing: 'border-box'
                 }}
               >
                 {DOCTORS.map(doc => (
@@ -718,6 +826,15 @@ export default function CalendarPage() {
                   padding: '20px 0'
                 }}>
                   Loading slots...
+                </p>
+              ) : slots.length === 0 ? (
+                <p style={{
+                  textAlign: 'center',
+                  color: '#94a3b8',
+                  fontSize: '12px',
+                  padding: '20px 0'
+                }}>
+                  No slots available
                 </p>
               ) : (
                 <div style={{
@@ -768,24 +885,31 @@ export default function CalendarPage() {
 
       {/* Booking Modal */}
       {showBooking && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(4px)'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            width: '480px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px rgba(0,0,0,0.2)'
-          }}>
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={handleCloseModal}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '20px',
+              width: '480px',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div style={{
               padding: '24px',
@@ -813,11 +937,7 @@ export default function CalendarPage() {
                 </p>
               </div>
               <button
-                onClick={() => {
-                  setShowBooking(false)
-                  setBookingStatus({ type: null, message: '' })
-                  setSelectedSlot('')
-                }}
+                onClick={handleCloseModal}
                 style={{
                   width: '32px',
                   height: '32px',
@@ -860,7 +980,8 @@ export default function CalendarPage() {
                     fontSize: '13px',
                     fontWeight: 600,
                     color: bookingStatus.type === 'success' ? '#059669' : '#dc2626',
-                    margin: 0
+                    margin: 0,
+                    flex: 1
                   }}>
                     {bookingStatus.message}
                   </p>
@@ -881,6 +1002,7 @@ export default function CalendarPage() {
                 <select
                   value={selectedDoctor}
                   onChange={e => setSelectedDoctor(e.target.value)}
+                  disabled={bookingLoading}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -890,7 +1012,9 @@ export default function CalendarPage() {
                     fontWeight: 600,
                     color: '#374151',
                     outline: 'none',
-                    backgroundColor: 'white'
+                    backgroundColor: 'white',
+                    cursor: bookingLoading ? 'not-allowed' : 'pointer',
+                    boxSizing: 'border-box'
                   }}
                 >
                   {DOCTORS.map(doc => (
@@ -919,6 +1043,7 @@ export default function CalendarPage() {
                     patient_name: e.target.value
                   })}
                   placeholder="Enter patient full name"
+                  disabled={bookingLoading}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -928,9 +1053,12 @@ export default function CalendarPage() {
                     fontWeight: 500,
                     color: '#374151',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    backgroundColor: bookingLoading ? '#f8fafc' : 'white'
                   }}
-                  onFocus={e => e.currentTarget.style.borderColor = '#6366f1'}
+                  onFocus={e => {
+                    if (!bookingLoading) e.currentTarget.style.borderColor = '#6366f1'
+                  }}
                   onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                 />
               </div>
@@ -953,6 +1081,7 @@ export default function CalendarPage() {
                     patient_phone: e.target.value
                   })}
                   placeholder="+971 XX XXX XXXX"
+                  disabled={bookingLoading}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -962,9 +1091,12 @@ export default function CalendarPage() {
                     fontWeight: 500,
                     color: '#374151',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    backgroundColor: bookingLoading ? '#f8fafc' : 'white'
                   }}
-                  onFocus={e => e.currentTarget.style.borderColor = '#6366f1'}
+                  onFocus={e => {
+                    if (!bookingLoading) e.currentTarget.style.borderColor = '#6366f1'
+                  }}
                   onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                 />
               </div>
@@ -981,8 +1113,12 @@ export default function CalendarPage() {
                   Select Time Slot
                 </label>
                 {slotsLoading ? (
-                  <p style={{ color: '#94a3b8', fontSize: '13px' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
                     Loading slots...
+                  </p>
+                ) : slots.length === 0 ? (
+                  <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
+                    No slots available
                   </p>
                 ) : (
                   <div style={{
@@ -990,19 +1126,20 @@ export default function CalendarPage() {
                     gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: '6px',
                     maxHeight: '180px',
-                    overflowY: 'auto'
+                    overflowY: 'auto',
+                    padding: '2px'
                   }}>
                     {slots.map((slot, i) => (
                       <button
                         key={i}
                         onClick={() => slot.available && setSelectedSlot(slot.time)}
-                        disabled={!slot.available}
+                        disabled={!slot.available || bookingLoading}
                         style={{
                           padding: '8px 4px',
                           borderRadius: '8px',
                           fontSize: '11px',
                           fontWeight: 700,
-                          cursor: slot.available ? 'pointer' : 'not-allowed',
+                          cursor: (slot.available && !bookingLoading) ? 'pointer' : 'not-allowed',
                           border: selectedSlot === slot.time
                             ? '2px solid #6366f1'
                             : '2px solid transparent',
@@ -1017,7 +1154,8 @@ export default function CalendarPage() {
                             ? '#6366f1'
                             : '#374151',
                           transition: 'all 0.15s',
-                          position: 'relative'
+                          position: 'relative',
+                          opacity: bookingLoading ? 0.5 : 1
                         }}
                       >
                         {slot.time}
@@ -1046,31 +1184,43 @@ export default function CalendarPage() {
               {/* Confirm Button */}
               <button
                 onClick={handleBook}
+                disabled={bookingLoading}
                 style={{
                   width: '100%',
                   padding: '13px',
                   borderRadius: '12px',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  background: bookingLoading 
+                    ? '#cbd5e1' 
+                    : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                   color: 'white',
                   fontSize: '14px',
                   fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
+                  cursor: bookingLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: bookingLoading ? 'none' : '0 4px 15px rgba(99,102,241,0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  transition: 'all 0.15s'
                 }}
               >
                 <CheckCircle size={16} />
-                Confirm Booking
+                {bookingLoading ? 'Booking...' : 'Confirm Booking'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Spinning animation for refresh button */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }
