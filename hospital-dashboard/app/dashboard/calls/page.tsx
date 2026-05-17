@@ -35,6 +35,7 @@ export default function CallsPage() {
 
   const filtered = calls.filter(call =>
     call.caller_phone?.toLowerCase().includes(search.toLowerCase()) ||
+    call.caller_name?.toLowerCase().includes(search.toLowerCase()) ||
     call.outcome?.toLowerCase().includes(search.toLowerCase()) ||
     call.call_summary?.toLowerCase().includes(search.toLowerCase())
   )
@@ -107,7 +108,7 @@ export default function CallsPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by phone, outcome or summary..."
+          placeholder="Search by name, phone, outcome or summary..."
           style={{
             width: '100%',
             padding: '10px 14px 10px 38px',
@@ -238,7 +239,7 @@ export default function CallsPage() {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {call.caller_phone || 'Unknown Number'}
+                    {call.caller_name || call.caller_phone || 'Unknown Caller'}
                   </p>
                   <p style={{
                     fontSize: '11px',
@@ -249,7 +250,7 @@ export default function CallsPage() {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {call.call_summary || call.outcome || 'No summary'}
+                    {call.caller_name ? call.caller_phone : (call.call_summary || call.outcome || 'No summary')}
                   </p>
                 </div>
 
@@ -340,6 +341,10 @@ export default function CallsPage() {
                   value: selectedCall.call_id?.slice(-12) || 'N/A'
                 },
                 {
+                  label: 'Caller Name',
+                  value: selectedCall.caller_name || 'Unknown'
+                },
+                {
                   label: 'Phone',
                   value: selectedCall.caller_phone || 'Unknown'
                 },
@@ -364,7 +369,7 @@ export default function CallsPage() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   padding: '10px 0',
-                  borderBottom: i < 5
+                  borderBottom: i < 6
                     ? '1px solid #f8fafc' : 'none'
                 }}>
                   <span style={{
