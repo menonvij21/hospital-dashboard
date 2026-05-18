@@ -18,9 +18,10 @@ export default function CallsPage() {
   const [mounted, setMounted] = useState(false)
 
   const fetchCalls = async () => {
+    setLoading(true)
     try {
       const res = await axios.get(`${API}/api/calls?limit=100`)
-      setCalls(res.data.calls)
+      setCalls(res.data.calls ?? [])
     } catch (error) {
       console.error(error)
     } finally {
@@ -31,11 +32,13 @@ export default function CallsPage() {
   useEffect(() => {
     setMounted(true)
     fetchCalls()
+    const t = setInterval(fetchCalls, 30000)
+    return () => clearInterval(t)
   }, [])
 
   const filtered = calls.filter(call =>
-    call.caller_phone?.toLowerCase().includes(search.toLowerCase()) ||
     call.caller_name?.toLowerCase().includes(search.toLowerCase()) ||
+    call.caller_phone?.toLowerCase().includes(search.toLowerCase()) ||
     call.outcome?.toLowerCase().includes(search.toLowerCase()) ||
     call.call_summary?.toLowerCase().includes(search.toLowerCase())
   )
@@ -73,6 +76,7 @@ export default function CallsPage() {
         </div>
         <button
           onClick={fetchCalls}
+          disabled={loading}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -84,12 +88,13 @@ export default function CallsPage() {
             fontSize: '13px',
             fontWeight: 600,
             color: '#374151',
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1,
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}
         >
           <RefreshCw size={13} />
-          Refresh
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
@@ -108,7 +113,7 @@ export default function CallsPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, phone, outcome or summary..."
+          placeholder="Search by phone, outcome or summary..."
           style={{
             width: '100%',
             padding: '10px 14px 10px 38px',
@@ -135,7 +140,7 @@ export default function CallsPage() {
       {/* Layout */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 400px',
+        gridTemplateColumns: selectedCall ? '1fr 400px' : '1fr',
         gap: '16px',
         alignItems: 'start'
       }}>
@@ -250,7 +255,7 @@ export default function CallsPage() {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {call.caller_name ? call.caller_phone : (call.call_summary || call.outcome || 'No summary')}
+                    {call.call_summary || call.outcome || 'No summary'}
                   </p>
                 </div>
 
@@ -315,7 +320,10 @@ export default function CallsPage() {
           <div style={{
             padding: '18px 20px',
             borderBottom: '1px solid #f8fafc',
-            backgroundColor: '#fafbfc'
+            backgroundColor: '#fafbfc',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
             <h3 style={{
               fontSize: '14px',
@@ -325,6 +333,26 @@ export default function CallsPage() {
             }}>
               Call Details
             </h3>
+            <button
+              onClick={() => setSelectedCall(null)}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '7px',
+                border: '1px solid #e2e8f0',
+                backgroundColor: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: '16px',
+                color: '#64748b',
+                lineHeight: 1
+              }}
+              title="Close"
+            >
+              ×
+            </button>
           </div>
 
           {selectedCall ? (
@@ -341,12 +369,8 @@ export default function CallsPage() {
                   value: selectedCall.call_id?.slice(-12) || 'N/A'
                 },
                 {
-                  label: 'Caller Name',
-                  value: selectedCall.caller_name || 'Unknown'
-                },
-                {
                   label: 'Phone',
-                  value: selectedCall.caller_phone || 'Unknown'
+                  value: selectedCall.caller_name || selectedCall.caller_phone || 'Unknown'
                 },
                 {
                   label: 'Type',
@@ -369,7 +393,7 @@ export default function CallsPage() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   padding: '10px 0',
-                  borderBottom: i < 6
+                  borderBottom: i < 5
                     ? '1px solid #f8fafc' : 'none'
                 }}>
                   <span style={{
