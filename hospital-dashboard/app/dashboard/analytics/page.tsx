@@ -919,7 +919,7 @@ export default function DashboardPage() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {call.caller_phone || 'Unknown Number'}
+                      {call.caller_name || call.caller_phone || 'Unknown Caller'}
                     </p>
                     <p style={{
                       fontSize: '11px',
